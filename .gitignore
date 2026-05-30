@@ -1,0 +1,32 @@
+# Environment
+.env
+token.json
+apify_enpoits.json
+
+# Google credentials
+client_secret_desktop.json
+
+# Data & output (runtime files)
+data/raw_jobs.json
+data/scored_jobs.json
+
+# Logs
+logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.Python
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# LaTeX artifacts
+*.aux
+*.log
+*.out
+*.synctex.gz
+resume.pdf

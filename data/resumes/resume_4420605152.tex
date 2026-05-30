@@ -1,0 +1,327 @@
+\documentclass[10pt, letterpaper]{article}
+
+% Packages:
+\usepackage[
+    ignoreheadfoot,
+    top=1 cm,
+    bottom=1 cm,
+    left=1 cm,
+    right=1 cm,
+    footskip=0.7 cm,
+]{geometry}
+\usepackage{titlesec}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{primaryColor}{RGB}{0, 79, 144}
+\usepackage{enumitem}
+\usepackage{fontawesome5}
+\usepackage{amsmath}
+\usepackage[
+    pdftitle={Parth Joshi's CV},
+    pdfauthor={Parth Joshi},
+    pdfcreator={Parth Joshi},
+    colorlinks=true,
+    urlcolor=primaryColor
+]{hyperref}
+\usepackage[pscoord]{eso-pic}
+\usepackage{calc}
+\usepackage{bookmark}
+\usepackage{lastpage}
+\usepackage{changepage}
+\usepackage{paracol}
+\usepackage{ifthen}
+\usepackage{needspace}
+\usepackage{iftex}
+
+\ifPDFTeX
+    \input{glyphtounicode}
+    \pdfgentounicode=1
+    \usepackage[utf8]{inputenc}
+    \usepackage{lmodern}
+\fi
+
+\AtBeginEnvironment{adjustwidth}{\partopsep0pt}
+\pagestyle{empty}
+\setcounter{secnumdepth}{0}
+\setlength{\parindent}{0pt}
+\setlength{\topskip}{0pt}
+\setlength{\columnsep}{0cm}
+\makeatletter
+\let\ps@customFooterStyle\ps@plain
+\patchcmd{\ps@customFooterStyle}{\thepage}{
+    \color{gray}\textit{\small Parth Joshi - Page \thepage{} of \pageref*{LastPage}}
+}{}{}
+\makeatother
+\pagestyle{customFooterStyle}
+
+\titleformat{\section}{\needspace{4\baselineskip}\bfseries\large}{}{0pt}{}[\vspace{1pt}\titlerule]
+
+\titlespacing{\section}{
+    -1pt
+}{
+    0.2 cm
+}{
+    0.2 cm
+}
+
+\renewcommand\labelitemi{$\circ$}
+\newenvironment{highlights}{
+    \begin{itemize}[
+        topsep=0.10 cm,
+        parsep=0.10 cm,
+        partopsep=0pt,
+        itemsep=0pt,
+        leftmargin=0.4 cm + 10pt
+    ]
+}{
+    \end{itemize}
+}
+
+\newenvironment{highlightsforbulletentries}{
+    \begin{itemize}[
+        topsep=0.10 cm,
+        parsep=0.10 cm,
+        partopsep=0pt,
+        itemsep=0pt,
+        leftmargin=10pt
+    ]
+}{
+    \end{itemize}
+}
+
+\newenvironment{onecolentry}{
+    \begin{adjustwidth}{
+        0.2 cm + 0.00001 cm
+    }{
+        0.2 cm + 0.00001 cm
+    }
+}{
+    \end{adjustwidth}
+}
+
+\newenvironment{twocolentry}[2][]{
+    \onecolentry
+    \def\secondColumn{#2}
+    \setcolumnwidth{\fill, 4.5 cm}
+    \begin{paracol}{2}
+}{
+    \switchcolumn \raggedleft \secondColumn
+    \end{paracol}
+    \endonecolentry
+}
+
+\newenvironment{header}{
+    \setlength{\topsep}{0pt}\par\kern\topsep\centering\linespread{1.5}
+}{
+    \par\kern\topsep
+}
+
+\newcommand{\placelastupdatedtext}{%
+  \AddToShipoutPictureFG*{%
+    \put(
+        \LenToUnit{\paperwidth-2 cm-0.2 cm+0.05cm},
+        \LenToUnit{\paperheight-1.0 cm}
+    )
+  }%
+}%
+
+\let\hrefWithoutArrow\href
+\renewcommand{\href}[2]{\hrefWithoutArrow{#1}{\ifthenelse{\equal{#2}{}}{ }{#2 }\raisebox{.15ex}{\footnotesize \faExternalLink*}}}
+
+\begin{document}
+    \newcommand{\AND}{\unskip
+        \cleaders\copy\ANDbox\hskip\wd\ANDbox
+        \ignorespaces
+    }
+    \newsavebox\ANDbox
+    \sbox\ANDbox{}
+
+    \placelastupdatedtext
+    \begin{header}
+        \textbf{\fontsize{24 pt}{24 pt}\selectfont Parth Joshi}
+
+        \vspace{0.1 cm}
+
+        \normalsize
+        \mbox{{\color{black}\footnotesize\faMapMarker*}\hspace*{0.13cm}Gurgaon, Haryana}%
+        \kern 0.25 cm%
+        \AND%
+        \kern 0.25 cm%
+        \mbox{\hrefWithoutArrow{mailto:paarthjoshi20@gmail.com}{\color{black}{\footnotesize\faEnvelope[regular]}\hspace*{0.13cm}paarthjoshi20@gmail.com}}%
+        \kern 0.25 cm%
+        \AND%
+        \kern 0.25 cm%
+        \mbox{\hrefWithoutArrow{tel:+91-7617209403}{\color{black}{\footnotesize\faPhone*}\hspace*{0.13cm}+91-7617209403}}%
+        \kern 0.25 cm%
+        \AND%
+        \kern 0.25 cm%
+        \mbox{\hrefWithoutArrow{https://www.linkedin.com/in/parth-joshi-6459a2235/}{\color{black}{\footnotesize\faLinkedinIn}\hspace*{0.13cm}parth-joshi}}%
+        \kern 0.25 cm%
+        \AND%
+        \kern 0.25 cm%
+        \mbox{\hrefWithoutArrow{https://github.com/zardat}{\color{black}{\footnotesize\faGithub}\hspace*{0.13cm}zardat}}%
+    \end{header}
+
+    \vspace{0.3 cm - 0.3 cm}
+
+    \section{Education}
+
+        \begin{twocolentry}{\textit{Dec 2020 – May 2024}}
+            \textbf{Indian Institute of Technology, Mandi}
+            
+            \textit{B.Tech in Data Science}
+        \end{twocolentry}
+        
+\vspace{0.3 cm}
+
+    \section{Technical Skills}
+    
+    \begin{onecolentry}
+        \textbf{LLM \& GenAI Systems:} LangChain, LangGraph, LangExtract, MCP (Model Context Protocol), llama.cpp, GGUF Quantization, Multi-Agent Workflows, Context Management, SillyTavern, Prompt Engineering, RAG Architectures, LLM Evaluation
+    \end{onecolentry}
+    
+    \vspace{0.2 cm}
+
+    \begin{onecolentry}
+        \textbf{Agentic AI \& Production Systems:} Multi-Agent Orchestration, Tool-Use Integration, Autonomous Reasoning Pipelines, State-Driven Dialogue Management, Model Serving, ML Infrastructure, MLOps
+    \end{onecolentry}
+    
+    \vspace{0.2 cm}
+
+    \begin{onecolentry}
+        \textbf{NLP \& Deep Learning:} BERT, InLegalBERT, HuggingFace Transformers, Embedding Fine-tuning, Intent Classification, Semantic Search, Named Entity Recognition
+    \end{onecolentry}
+    
+    \vspace{0.2 cm}
+    
+    \begin{onecolentry}
+        \textbf{ML Engineering:} TensorFlow, PyTorch, Keras, Scikit-Learn, LSTM, OpenCV, Feature Engineering, Model Optimization
+    \end{onecolentry}
+    
+    \vspace{0.1 cm}
+
+    \begin{onecolentry}
+        \textbf{Data Engineering:} PostgreSQL, Redis, Kafka, Docker, Kubernetes, ETL Pipelines, Real-time Processing, Pinecone, ChromaDB, REST APIs
+    \end{onecolentry}
+    
+    \vspace{0.1 cm}
+    
+    \begin{onecolentry}
+        \textbf{Programming \& Tools:} Python, SQL, C++, JavaScript, Django, Flask, FastAPI, Streamlit, Git, Pandas, NumPy, Matplotlib, Plotly, Playwright, BeautifulSoup, Locust
+    \end{onecolentry}
+\vspace{0.3 cm}
+    \section{Experience}
+
+        \vspace{0.2 cm}
+
+        \begin{twocolentry}{\textit{Oct 2025 – Present}}
+            \textbf{Data Scientist}
+            
+            \textit{Amenify, Gurgaon}
+        \end{twocolentry}
+        
+        \vspace{0.10 cm}
+        \begin{onecolentry}
+            \begin{highlights}
+                \item Architected Maddie AI, a production multi-agent conversational AI system using LangGraph and LangChain with multi-agent orchestration and deterministic state-driven dialogue management, serving 10K+ monthly bookings at scale
+                \item Developed autonomous reasoning pipelines with tool-use integration for automated home service workflows, demonstrating production-grade LLM system deployment with inference optimization
+                \item Built location-based restaurant data service using Playwright and BeautifulSoup to bypass bot detection, managing headless browser sessions and exposing real-time menu data via REST API endpoints; validated scalability with Locust load testing
+                \item Write complex SQL queries for Trevor client dashboards to surface performance metrics, operational KPIs, and business intelligence insights
+            \end{highlights}
+        \end{onecolentry}
+
+        \vspace{0.2 cm}
+
+        \begin{twocolentry}{\textit{Aug 2024 – Mar 2025}}
+            \textbf{Software Developer}
+            
+            \textit{Samarth Egov, Ministry of Education, New Delhi}
+        \end{twocolentry}
+
+        \vspace{0.10 cm}
+        \begin{onecolentry}
+            \begin{highlights}  
+                 \item Developed the Samarth E-Gov Suite using Yii and Bootstrap, enabling 200+ universities to streamline administration
+                \item Optimized workflows, reducing system response time by 30\% and improving operational efficiency for over 900,000 students and faculty  
+            \end{highlights}
+        \end{onecolentry}
+
+        \vspace{0.2 cm}
+
+        \begin{twocolentry}{\textit{Feb 2023 – July 2023}}
+            \textbf{Data Analyst Intern}
+            
+            \textit{Axestrack Software Solutions, Jaipur}
+        \end{twocolentry}
+
+        \vspace{0.10 cm}
+        \begin{onecolentry}
+            \begin{highlights}
+                \item Cross-validated transition from scheduler-based to push-based data processing using Kafka, reducing data ingestion latency for real-time logistics tracking
+                \item Improved automated OCR pipeline for document categorization and routing, processing 10,000+ files with enhanced accuracy
+                \item Revamped ETL pipeline architecture to optimize logistics data handling, achieving 30\% increase in data retrieval speed
+            \end{highlights}
+        \end{onecolentry}
+
+    \section{Research}
+
+        \begin{twocolentry}{\textit{\href{https://www.sciencedirect.com/science/article/abs/pii/S0304885325007735}{Sep 2025}}}
+            \textbf{Predicting Magnetization of Transition Metal-Based Materials Using CGCNN}
+        \end{twocolentry}
+        
+        \vspace{0.05 cm}
+        \begin{onecolentry}
+            Published in \textit{Journal of Magnetism and Magnetic Materials} (Elsevier). Developed Crystal Graph Convolutional Neural Networks to predict magnetization in transition metal compounds, reducing reliance on computationally expensive DFT calculations.
+        \end{onecolentry}
+\vspace{0.3 cm}
+    \section{NLP \& GenAI Engineering Projects}
+
+        \vspace{0.1 cm}
+
+        \begin{twocolentry}{\textit{In Progress}}
+            \textbf{Dynamic Credit System (Geo-Aware Credit Intelligence)}
+        \end{twocolentry}
+        \vspace{0.05 cm}
+        \begin{onecolentry}
+            \begin{highlights}
+                \item Building rule-based dynamic credit limit engine using real-time location context and behavioral risk signals including spend velocity and utilization patterns
+                \item Implemented geo-fencing with OpenStreetMap POIs for high-risk zone detection and triggered credit limit updates on geo-fence entry events
+                \item Designed ML-ready architecture for future model-driven credit optimization and A/B testing framework
+            \end{highlights}
+        \end{onecolentry}
+
+        \begin{twocolentry}{\textit{\href{https://github.com/zardat/Email-Intent-Classification-}{GitHub}}}
+            \textbf{Email Intent Classification System}
+        \end{twocolentry}
+        \vspace{0.05 cm}
+        \begin{onecolentry}
+            \begin{highlights}
+                \item Developed multi-class NLP pipeline for real estate email routing using BERT-based fine-tuning for intent classification with prompt engineering optimization
+                \item Built Flask API with Gmail IMAP integration for real-time intent prediction and model serving, achieving 92\% F1-score on test set through data augmentation via NLTK and back-translation
+            \end{highlights}
+        \end{onecolentry}
+
+        \vspace{0.1 cm}
+
+        \begin{twocolentry}{}
+            \textbf{Portable AI: USB-Based Local LLM System}
+        \end{twocolentry}
+        \vspace{0.05 cm}
+        \begin{onecolentry}
+            \begin{highlights}
+                \item Engineered fully offline LLM inference system with OpenAI-compatible API using llama.cpp and quantized GGUF models optimized for less than 8GB RAM environments, demonstrating model serving and optimization techniques
+                \item Integrated SillyTavern frontend for prompt orchestration, memory handling, autonomous conversational workflows, and context window management for production-ready deployment
+            \end{highlights}
+        \end{onecolentry}
+
+        
+
+    
+    
+\begin{minipage}[0pt][0pt][0pt]{15500pt}
+        \noindent\phantom{
+        Data Scientist Machine Learning Engineer AI Engineer Applied Scientist Research Scientist NLP Engineer Computer Vision Engineer MLOps Engineer Data Engineer Quantitative Researcher Predictive Analytics Statistical Modeling Probability Statistics Linear Algebra Calculus Optimization Hypothesis Testing A/B Testing Bayesian Inference Time Series Forecasting Anomaly Detection Recommender Systems Generative AI LLM Transformers BERT GPT RNN LSTM CNN Attention Mechanisms Embeddings Feature Engineering Data Preprocessing Data Wrangling Data Cleaning Data Pipelines ETL Big Data Hadoop Spark Kafka Flink Data Lakes Data Warehousing OLAP OLTP SQL NoSQL MySQL PostgreSQL MongoDB Cassandra Neo4j TimescaleDB InfluxDB Python R Julia Scala Java C++ TensorFlow PyTorch Keras Scikit-learn XGBoost LightGBM CatBoost HuggingFace OpenAI LangChain LangGraph LangExtract MLflow Kubeflow Airflow MLOps Model Deployment Model Serving Model Monitoring Experiment Tracking Hyperparameter Tuning Cloud AWS Sagemaker GCP Vertex AI Azure ML Docker Kubernetes Terraform Git GitHub Actions CI/CD API Development REST FastAPI gRPC Data Visualization Tableau PowerBI Matplotlib Seaborn Plotly Dash D3.js Business Analytics Customer Analytics Fraud Detection Risk Modeling Churn Prediction Sentiment Analysis Forecasting Optimization Financial Modeling Simulation Reinforcement Learning Graph Neural Networks Knowledge Graphs Statistical Inference Unsupervised Learning Supervised Learning Semi-Supervised Learning Clustering Classification Regression Dimensionality Reduction PCA t-SNE UMAP Interpretability SHAP LIME Fairness Bias Mitigation Responsible AI Compliance GDPR PCI DSS Documentation Collaboration Mentorship Communication Leadership MCP Model Context Protocol Agent Communication Multi-Agent Systems InLegalBERT Legal NLP Domain Adaptation Fine-tuning Embedding Models Semantic Search Vector Databases OpenSearch Playwright BeautifulSoup Web Scraping Locust Load Testing Bot Detection Session Management
+        }
+    \end{minipage}
+\end{document}
