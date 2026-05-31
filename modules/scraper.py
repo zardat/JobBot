@@ -4,34 +4,26 @@ import time
 import requests
 from datetime import date
 from dotenv import load_dotenv
+import config as cfg
 from modules.sheets import read_url_config
 
 load_dotenv()
 
 APIFY_TOKEN = os.getenv("APIFY_TOKEN")
-ACTOR_ID = "curious_coder~linkedin-jobs-scraper"
-RAW_JOBS_PATH = "data/raw_jobs.json"
-
-BASE_URL = "https://api.apify.com/v2"
-
-# --- Actor parameters ---
-SCRAPE_COMPANY = True      # fetch extra company info (slower but richer data)
-SPLIT_BY_LOCATION = False  # split search by city (useful if >1000 results expected)
-SPLIT_COUNTRY = None       # e.g. "US", "IN" — only used if SPLIT_BY_LOCATION=True
 
 
 def _run_actor(search_url, max_jobs):
     payload = {
         "urls": [search_url],
         "count": max_jobs,
-        "scrapeCompany": SCRAPE_COMPANY,
-        "splitByLocation": SPLIT_BY_LOCATION,
+        "scrapeCompany": cfg.SCRAPE_COMPANY,
+        "splitByLocation": cfg.SPLIT_BY_LOCATION,
     }
-    if SPLIT_BY_LOCATION and SPLIT_COUNTRY:
-        payload["splitCountry"] = SPLIT_COUNTRY
+    if cfg.SPLIT_BY_LOCATION and cfg.SPLIT_COUNTRY:
+        payload["splitCountry"] = cfg.SPLIT_COUNTRY
 
     resp = requests.post(
-        f"{BASE_URL}/acts/{ACTOR_ID}/runs",
+        f"{cfg.APIFY_BASE_URL}/acts/{cfg.APIFY_ACTOR_ID}/runs",
         params={"token": APIFY_TOKEN},
         json=payload,
     )
@@ -39,11 +31,13 @@ def _run_actor(search_url, max_jobs):
     return resp.json()["data"]
 
 
-def _wait_for_run(run_id, poll_interval=10, timeout=600):
+def _wait_for_run(run_id, poll_interval=None, timeout=None):
+    poll_interval = poll_interval or cfg.APIFY_POLL_INTERVAL
+    timeout = timeout or cfg.APIFY_RUN_TIMEOUT
     deadline = time.time() + timeout
     while time.time() < deadline:
         resp = requests.get(
-            f"{BASE_URL}/actor-runs/{run_id}",
+            f"{cfg.APIFY_BASE_URL}/actor-runs/{run_id}",
             params={"token": APIFY_TOKEN},
         )
         resp.raise_for_status()
@@ -59,16 +53,32 @@ def _wait_for_run(run_id, poll_interval=10, timeout=600):
 
 def _fetch_dataset(dataset_id):
     resp = requests.get(
-        f"{BASE_URL}/datasets/{dataset_id}/items",
+        f"{cfg.APIFY_BASE_URL}/datasets/{dataset_id}/items",
         params={"token": APIFY_TOKEN, "format": "json", "clean": "true"},
     )
     resp.raise_for_status()
     return resp.json()
 
 
-def scrape_jobs():
+def scrape_jobs(max_per_url=None, max_total=None):
+    """Scrape jobs from all active URLs in the url_config sheet.
+
+    max_per_url: overrides the sheet's `max_jobs` column for every URL.
+                 Defaults to config.MAX_JOBS_PER_URL_OVERRIDE.
+    max_total:   caps total jobs scraped across all URLs (stops calling Apify
+                 once reached). Defaults to config.MAX_TOTAL_JOBS.
+    """
+    if max_per_url is None:
+        max_per_url = cfg.MAX_JOBS_PER_URL_OVERRIDE
+    if max_total is None:
+        max_total = cfg.MAX_TOTAL_JOBS
+
     url_configs = [u for u in read_url_config() if u.get("active", "").upper() == "TRUE"]
     print(f"[scraper] {len(url_configs)} active URLs found")
+    if max_per_url:
+        print(f"[scraper] max-per-url override: {max_per_url} jobs/URL")
+    if max_total:
+        print(f"[scraper] max-total cap: {max_total} jobs across all URLs")
 
     all_jobs = []
     today = str(date.today())
@@ -76,8 +86,20 @@ def scrape_jobs():
     for config in url_configs:
         label = config.get("label", "")
         url = config.get("url", "")
-        max_jobs = int(config.get("max_jobs", 25))
         geography = config.get("geography", "")
+
+        if max_per_url:
+            max_jobs = max_per_url
+        else:
+            max_jobs = int(config.get("max_jobs", cfg.DEFAULT_MAX_JOBS_PER_URL))
+
+        # Respect the global cap: only request what's still needed, stop early.
+        if max_total is not None:
+            remaining = max_total - len(all_jobs)
+            if remaining <= 0:
+                print(f"[scraper] Reached max-total ({max_total}) — skipping remaining URLs")
+                break
+            max_jobs = min(max_jobs, remaining)
 
         print(f"[scraper] Running actor for: {label} (max {max_jobs} jobs)...")
 
@@ -116,10 +138,16 @@ def scrape_jobs():
                 "date_first_seen": today,
             })
 
-    with open(RAW_JOBS_PATH, "w") as f:
+        # Safety trim in case the actor returned more than requested.
+        if max_total is not None and len(all_jobs) >= max_total:
+            all_jobs = all_jobs[:max_total]
+            print(f"[scraper] Reached max-total ({max_total}) — stopping")
+            break
+
+    with open(cfg.RAW_JOBS_PATH, "w") as f:
         json.dump(all_jobs, f, indent=2)
 
-    print(f"[scraper] Done. {len(all_jobs)} total jobs saved to {RAW_JOBS_PATH}")
+    print(f"[scraper] Done. {len(all_jobs)} total jobs saved to {cfg.RAW_JOBS_PATH}")
     return all_jobs
 
 

@@ -1,11 +1,12 @@
 import os
 import json
-from pathlib import Path
+from datetime import datetime
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
+import config as cfg
 
 load_dotenv()
 
@@ -14,11 +15,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
 ]
 SPREADSHEET_ID = os.getenv("GOOGLE_SHEETS_ID")
-TOKEN_PATH = Path(__file__).parent.parent / "token.json"
+TOKEN_PATH = cfg.TOKEN_PATH
 
-SHEET_URL_CONFIG = "url_config"
-SHEET_SEEN_JOBS = "seen_job"
-SHEET_ACTION = "action_sheet"
+SHEET_URL_CONFIG = cfg.SHEET_URL_CONFIG
+SHEET_SEEN_JOBS = cfg.SHEET_SEEN_JOBS
+SHEET_ACTION = cfg.SHEET_ACTION
 
 
 def get_credentials():
@@ -113,7 +114,7 @@ def append_action_row(job):
     service = get_service()
 
     row = [
-        job.get("date_first_seen", ""),      # A - Date
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # A - Date (when row written)
         job.get("source_url_label", ""),      # B - Source
         job.get("geography", ""),             # C - Geography
         job.get("company", ""),               # D - Company

@@ -5,11 +5,11 @@ import time
 import logging
 import argparse
 from datetime import date
-from pathlib import Path
 
+import config as cfg
 from modules.scraper import scrape_jobs
 from modules.deduplicator import filter_new_jobs, mark_jobs_seen
-from modules.scorer import score_jobs, filter_qualified
+from modules.scorer import score_job
 from modules.email_finder import find_contact
 from modules.resume_builder import build_resume
 from modules.message_writer import write_messages
@@ -19,7 +19,7 @@ from modules.sheets import append_action_row
 # Logging
 # ---------------------------------------------------------------------------
 
-LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR = cfg.LOG_DIR
 LOG_DIR.mkdir(exist_ok=True)
 LOG_FILE = LOG_DIR / f"run_{date.today()}.log"
 
@@ -38,7 +38,7 @@ log = logging.getLogger(__name__)
 # Retry helper
 # ---------------------------------------------------------------------------
 
-def with_retry(fn, *args, retries=2, delay=5, label=""):
+def with_retry(fn, *args, retries=cfg.RETRY_COUNT, delay=cfg.RETRY_DELAY, label=""):
     for attempt in range(1, retries + 2):
         try:
             return fn(*args)
@@ -76,6 +76,7 @@ def run(args):
         "scraped": 0,
         "new": 0,
         "scored_low": 0,
+        "qualified": 0,
         "no_contact": 0,
         "processed": 0,
         "failed": 0,
@@ -84,7 +85,7 @@ def run(args):
     # Step 1 — Scrape
     if args.skip_scrape:
         log.info("[main] Skipping scrape — loading existing raw_jobs.json")
-        with open("data/raw_jobs.json") as f:
+        with open(cfg.RAW_JOBS_PATH) as f:
             raw_jobs = json.load(f)
     else:
         log.info("[main] Step 1 — Scraping jobs...")
@@ -109,33 +110,41 @@ def run(args):
         log.info("[main] No new jobs to process. Exiting.")
         return
 
-    # Step 3 — Score
-    log.info(f"[main] Step 3 — Scoring {len(new_jobs)} jobs...")
-    scored_jobs = score_jobs(new_jobs)
+    # Step 3-8 — Score and fully process each job in a single pass
+    log.info(f"[main] Processing {len(new_jobs)} jobs one at a time...")
 
-    qualified = filter_qualified(scored_jobs)
-    low_score = [j for j in scored_jobs if j not in qualified]
-
-    # Mark low-score jobs as seen so they're not re-scored next run
-    mark_jobs_seen(low_score, status="scored_low")
-    stats["scored_low"] = len(low_score)
-
-    if args.score_only:
-        log.info("[main] --score-only flag set. Stopping after scoring.")
-        _print_summary(stats)
-        return
-
-    if not qualified:
-        log.info("[main] No qualified jobs. Exiting.")
-        return
-
-    # Step 4-8 — Per-job processing
-    log.info(f"[main] Processing {len(qualified)} qualified jobs...")
-
-    for job in qualified:
+    for job in new_jobs:
         label = f"{job.get('company')} — {job.get('title')}"
-        log.info(f"\n[main] ── Processing: {label}")
+        log.info(f"\n[main] ── {label}")
 
+        # Step 3 — Score
+        try:
+            log.info(f"[main] Step 3 — Scoring...")
+            job = score_job(job)
+            log.info(f"[main] score={job.get('score')} apply={job.get('apply')}")
+        except Exception as e:
+            # Real error (not an information outcome) — do NOT mark seen, retry next run
+            log.error(f"[main] Scoring failed: {label} — {e}")
+            stats["failed"] += 1
+            continue
+
+        # Qualify check — skip low-scored jobs and mark them seen
+        qualified = job.get("apply") and job.get("score", 0) >= cfg.SCORE_THRESHOLD
+        if not qualified:
+            log.info(f"[main] Below threshold ({cfg.SCORE_THRESHOLD}) — skipping")
+            mark_jobs_seen([job], status="scored_low")
+            stats["scored_low"] += 1
+            continue
+
+        stats["qualified"] += 1
+
+        # --score-only: stop here for qualified jobs (don't mark seen, so a real
+        # run still processes them later)
+        if args.score_only:
+            log.info(f"[main] --score-only — qualified, not processing")
+            continue
+
+        # Step 4-8 — Full processing
         try:
             # Step 4 — Find contact
             log.info(f"[main] Step 4 — Finding contact...")
@@ -185,6 +194,7 @@ def _print_summary(stats):
     log.info(f"  Scraped:      {stats['scraped']}")
     log.info(f"  New:          {stats['new']}")
     log.info(f"  Scored low:   {stats['scored_low']}")
+    log.info(f"  Qualified:    {stats['qualified']}")
     log.info(f"  No contact:   {stats['no_contact']}")
     log.info(f"  Processed:    {stats['processed']}")
     log.info(f"  Failed:       {stats['failed']}")

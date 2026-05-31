@@ -16,15 +16,30 @@ var SHEET_NAME = "action_sheet";
 var SENDER_NAME = "Parth Joshi";
 
 
-function onEdit(e) {
-  var sheet = e.source.getActiveSheet();
+// Attach this to an INSTALLABLE "On edit" trigger (Triggers → Add Trigger →
+// function: handleEdit, source: From spreadsheet, event: On edit). An
+// installable trigger runs with full authorization, which the simple onEdit
+// sandbox does not — required for GmailApp / DriveApp here.
+function handleEdit(e) {
+  // The trigger only passes `e` on a real cell edit. Clicking "Run" in the
+  // editor calls it with no event object, which throws
+  // "Cannot read properties of undefined (reading 'source')". Guard against it.
+  if (!e || !e.source || !e.range) return;
+
+  var sheet = e.range.getSheet();
+  Logger.log("handleEdit fired: sheet=%s row=%s col=%s value=%s",
+             sheet.getName(), e.range.getRow(), e.range.getColumn(), e.value);
   if (sheet.getName() !== SHEET_NAME) return;
 
   var row = e.range.getRow();
   var col = e.range.getColumn();
 
   if (col !== COL.SEND_EMAIL || row <= 1) return;
-  if (e.value !== "TRUE") return;
+
+  // Checkbox edits report the value as boolean `true` (installable trigger) or
+  // the string "TRUE" (simple trigger) — accept either.
+  var checked = (e.value === true || String(e.value).toUpperCase() === "TRUE");
+  if (!checked) return;
 
   // Uncheck immediately so double-sends can't happen
   e.range.setValue(false);
@@ -40,12 +55,12 @@ function onEdit(e) {
   var role         = data[COL.ROLE - 1];
 
   if (!contactEmail) {
-    SpreadsheetApp.getUi().alert("No contact email in row " + row + ". Skipping.");
+    SpreadsheetApp.getActiveSpreadsheet().toast("No contact email in row " + row + ". Skipping.", "JobBot", 5);
     return;
   }
 
   if (status === "Emailed") {
-    SpreadsheetApp.getUi().alert("Email already sent for " + company + " — " + role);
+    SpreadsheetApp.getActiveSpreadsheet().toast("Already emailed: " + company + " — " + role, "JobBot", 5);
     return;
   }
 

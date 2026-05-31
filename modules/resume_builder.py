@@ -1,15 +1,15 @@
 import os
 import subprocess
 import anthropic
-from pathlib import Path
 from dotenv import load_dotenv
+import config as cfg
 from modules.drive_uploader import upload_resume
 
 load_dotenv()
 
-RESUME_PATH = Path(__file__).parent.parent / "resume.tex"
-PROJECTS_PATH = Path(__file__).parent.parent / "projects.md"
-OUTPUT_DIR = Path(__file__).parent.parent / "data" / "resumes"
+RESUME_PATH = cfg.RESUME_PATH
+PROJECTS_PATH = cfg.PROJECTS_PATH
+OUTPUT_DIR = cfg.RESUMES_OUTPUT_DIR
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
@@ -66,12 +66,24 @@ TAILORING NOTES:
 Return the complete modified LaTeX source now:"""
 
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=8096,
+        model=cfg.CLAUDE_MODEL,
+        max_tokens=cfg.RESUME_MAX_TOKENS,
         messages=[{"role": "user", "content": prompt}],
     )
 
     latex = message.content[0].text.strip()
+
+    # Discard Claude's preamble. It sometimes corrupts the command definitions
+    # between \begin{document} and \begin{header} (e.g. duplicating
+    # \placelastupdatedtext, dropping \hrefExternalWithoutArrow, commenting out
+    # the \placelastupdatedtext call), which produces a blank first page. Keep
+    # the pristine preamble from the base template and only take Claude's body
+    # (header + sections) from \begin{header} onward.
+    HEADER = r"\begin{header}"
+    if HEADER in resume_full and HEADER in latex:
+        latex = resume_full[: resume_full.index(HEADER)] + latex[latex.index(HEADER):]
+    else:
+        print("[resume_builder] WARNING: \\begin{header} not found — keeping Claude preamble")
 
     # Reattach the keyword block before \end{document}
     if keyword_block and r"\end{document}" in latex:
@@ -82,13 +94,13 @@ Return the complete modified LaTeX source now:"""
 
 def _compile_pdf(tex_path):
     cmd = [
-        "pdflatex",
+        cfg.LATEX_COMPILER,
         "-interaction=nonstopmode",
         f"-output-directory={OUTPUT_DIR}",
         str(tex_path),
     ]
-    # Run twice so LastPage and cross-references resolve correctly
-    for _ in range(2):
+    # Run multiple passes so LastPage and cross-references resolve correctly
+    for _ in range(cfg.LATEX_PASSES):
         subprocess.run(cmd, capture_output=True, text=True)
 
     pdf_path = OUTPUT_DIR / (tex_path.stem + ".pdf")
@@ -97,20 +109,35 @@ def _compile_pdf(tex_path):
 
 
 def _cleanup(job_id):
-    for ext in [".aux", ".log", ".out", ".tex"]:
+    for ext in [".aux", ".log", ".out", ".tex", ".pdf"]:
         f = OUTPUT_DIR / f"resume_{job_id}{ext}"
         if f.exists():
             f.unlink()
 
 
 def build_resume(job):
+    # Per-job generation paused — attach the single default resume to every job
+    # and skip the Claude call, pdflatex compile, and Drive upload entirely.
+    if not cfg.MAKE_RESUME:
+        if not cfg.DEFAULT_RESUME_LINK:
+            print("[resume_builder] WARNING: MAKE_RESUME=False but DEFAULT_RESUME_LINK is empty")
+        print("[resume_builder] MAKE_RESUME=False — using default resume link")
+        job["resume_drive_link"] = cfg.DEFAULT_RESUME_LINK
+        return job
+
     job_id = job.get("job_id")
     tex_path = OUTPUT_DIR / f"resume_{job_id}.tex"
     pdf_path = OUTPUT_DIR / f"resume_{job_id}.pdf"
 
-    print(f"[resume_builder] Generating LaTeX for {job.get('company')} — {job.get('title')}...")
-    latex = _generate_latex(job)
-    tex_path.write_text(latex)
+    # Generate the LaTeX only once. If a previous attempt already produced the
+    # .tex (e.g. a retry after pdflatex failed), reuse it so we don't re-bill
+    # Claude just to recompile.
+    if tex_path.exists() and tex_path.read_text().strip():
+        print(f"[resume_builder] Reusing cached LaTeX for {job.get('company')} — {job.get('title')}")
+    else:
+        print(f"[resume_builder] Generating LaTeX for {job.get('company')} — {job.get('title')}...")
+        latex = _generate_latex(job)
+        tex_path.write_text(latex)
 
     print(f"[resume_builder] Compiling PDF...")
     _compile_pdf(tex_path)
@@ -121,7 +148,8 @@ def build_resume(job):
     print(f"[resume_builder] Uploading to Drive...")
     drive_link = upload_resume(str(pdf_path), job_id)
 
-    # _cleanup(job_id)  # disabled for debugging
+    # Upload succeeded — delete the local .tex/.pdf and aux files.
+    _cleanup(job_id)
 
     job["resume_drive_link"] = drive_link
     return job

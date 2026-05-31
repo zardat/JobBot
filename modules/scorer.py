@@ -1,19 +1,27 @@
 import os
 import json
 import anthropic
-from pathlib import Path
 from dotenv import load_dotenv
+import config as cfg
 
 load_dotenv()
-
-SCORE_THRESHOLD = 7
-RESUME_PATH = Path(__file__).parent.parent / "resume.tex"
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 def score_job(job):
-    resume = RESUME_PATH.read_text()
+    resume = cfg.RESUME_PATH.read_text()
+
+    exp_rule = ""
+    if cfg.MAX_YEARS_EXPERIENCE is not None:
+        exp_rule = (
+            f'- score 0 and apply false if the JD requires MORE than '
+            f'{cfg.MAX_YEARS_EXPERIENCE} years of experience. Read the minimum '
+            f'required years from the JD (e.g. "5+ years", "6-8 years", '
+            f'"minimum 5 years"). If the minimum exceeds '
+            f'{cfg.MAX_YEARS_EXPERIENCE}, reject. If no specific experience '
+            f'requirement is stated, do not reject on this rule.\n'
+        )
 
     prompt = f"""You are evaluating a job posting for a candidate. Analyze the fit and return a JSON response only — no explanation outside the JSON.
 
@@ -31,7 +39,7 @@ Description:
 SCORING RULES:
 - Score 1-10 based on skills match, experience level, and role alignment
 - score 0 and apply false if JD contains: "must be authorized to work in the US", "US citizens only", "active security clearance required"
-- geo_flag = "Timezone Risk" if hard EST/PST requirement with no async option mentioned
+{exp_rule}- geo_flag = "Timezone Risk" if hard EST/PST requirement with no async option mentioned
 - tailoring_notes: specific instructions on what to emphasize in the resume for this JD
 
 Return this exact JSON:
@@ -45,8 +53,8 @@ Return this exact JSON:
 }}"""
 
     message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=512,
+        model=cfg.CLAUDE_MODEL,
+        max_tokens=cfg.SCORER_MAX_TOKENS,
         messages=[{"role": "user", "content": prompt}],
     )
 
@@ -75,6 +83,6 @@ def score_jobs(jobs):
 
 
 def filter_qualified(scored_jobs):
-    qualified = [j for j in scored_jobs if j.get("apply") and j.get("score", 0) >= SCORE_THRESHOLD]
-    print(f"[scorer] {len(qualified)}/{len(scored_jobs)} jobs passed threshold ({SCORE_THRESHOLD}+)")
+    qualified = [j for j in scored_jobs if j.get("apply") and j.get("score", 0) >= cfg.SCORE_THRESHOLD]
+    print(f"[scorer] {len(qualified)}/{len(scored_jobs)} jobs passed threshold ({cfg.SCORE_THRESHOLD}+)")
     return qualified
