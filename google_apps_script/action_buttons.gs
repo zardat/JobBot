@@ -16,6 +16,23 @@ var SHEET_NAME = "action_sheet";
 var SENDER_NAME = "Parth Joshi";
 
 
+// Convert a plain-text body into simple HTML so blank lines become paragraphs
+// and single newlines become <br>, matching the Python emailer's formatting.
+function bodyToHtml(body) {
+  var escaped = String(body)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  var paragraphs = escaped.split(/\n\s*\n/);
+  var htmlParas = paragraphs
+    .filter(function (p) { return p.trim() !== ""; })
+    .map(function (p) { return "<p>" + p.replace(/\n/g, "<br>") + "</p>"; })
+    .join("");
+  return '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.5;">' +
+         htmlParas + "</div>";
+}
+
+
 // Attach this to an INSTALLABLE "On edit" trigger (Triggers → Add Trigger →
 // function: handleEdit, source: From spreadsheet, event: On edit). An
 // installable trigger runs with full authorization, which the simple onEdit
@@ -76,10 +93,12 @@ function handleEdit(e) {
     }
   }
 
-  // Send the email
+  // Send the email. Pass htmlBody so paragraphs/line breaks render — plain
+  // text alone gets collapsed into one blob by Gmail (format=flowed).
   GmailApp.sendEmail(contactEmail, emailSubject, emailBody, {
     name: SENDER_NAME,
     attachments: attachments,
+    htmlBody: bodyToHtml(emailBody),
   });
 
   // Update status + timestamp

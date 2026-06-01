@@ -13,6 +13,7 @@ load_dotenv()
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/gmail.send",
 ]
 SPREADSHEET_ID = os.getenv("GOOGLE_SHEETS_ID")
 TOKEN_PATH = cfg.TOKEN_PATH
@@ -109,8 +110,12 @@ def add_seen_job(job):
 
 # --- Action CSV ---
 
-def append_action_row(job):
-    """Appends a completed job object as a new row in the Action CSV sheet."""
+def append_action_row(job, status="Pending", date_applied=""):
+    """Appends a completed job object as a new row in the Action CSV sheet.
+
+    status / date_applied let the auto-emailer record an already-sent
+    application (status="Emailed", date_applied=now) instead of "Pending".
+    """
     service = get_service()
 
     row = [
@@ -133,8 +138,8 @@ def append_action_row(job):
         job.get("email_body", ""),            # Q - Email Body
         job.get("li_connection_note", ""),    # R - LI Connection Note
         job.get("li_followup_message", ""),   # S - LI Followup
-        "Pending",                            # T - Status
-        "",                                   # U - Date Applied
+        status,                               # T - Status
+        date_applied,                         # U - Date Applied
         "",                                   # V - Notes
         False,                                # W - Send Email (checkbox)
     ]

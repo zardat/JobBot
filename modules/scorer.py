@@ -10,7 +10,8 @@ client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
 
 
 def score_job(job):
-    resume = cfg.RESUME_PATH.read_text()
+    skills = cfg.SKILLS_PATH.read_text()
+    projects = cfg.PROJECTS_PATH.read_text()
 
     exp_rule = ""
     if cfg.MAX_YEARS_EXPERIENCE is not None:
@@ -25,8 +26,11 @@ def score_job(job):
 
     prompt = f"""You are evaluating a job posting for a candidate. Analyze the fit and return a JSON response only — no explanation outside the JSON.
 
-CANDIDATE RESUME (LaTeX):
-{resume}
+CANDIDATE SKILLS (ground truth — the ONLY skills the candidate actually knows):
+{skills}
+
+CANDIDATE EXPERIENCE & PROJECTS (work history, research, and personal projects):
+{projects}
 
 JOB DETAILS:
 Title: {job.get('title')}
@@ -37,7 +41,7 @@ Description:
 {job.get('description')}
 
 SCORING RULES:
-- Score 1-10 based on skills match, experience level, and role alignment
+- Score 1-10 based on skills match, experience level, and role alignment. Judge skill match ONLY against the CANDIDATE SKILLS list above — skills mentioned in the JD but absent from that list count as gaps, not strengths.
 - score 0 and apply false if JD contains: "must be authorized to work in the US", "US citizens only", "active security clearance required"
 {exp_rule}- geo_flag = "Timezone Risk" if hard EST/PST requirement with no async option mentioned
 - tailoring_notes: specific instructions on what to emphasize in the resume for this JD

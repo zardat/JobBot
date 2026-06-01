@@ -1,4 +1,5 @@
 import os
+import time
 import json
 import requests
 import anthropic
@@ -10,6 +11,29 @@ load_dotenv()
 PROSPEO_KEY = os.getenv("PROSPEO_API_KEY")
 
 client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+# Timestamp of the last Prospeo search call, used to space out requests so we
+# stay under the search endpoint's 1/sec rate limit.
+_last_search_ts = 0.0
+
+
+def _throttle_search():
+    """Sleep just enough so consecutive search calls are spaced out."""
+    global _last_search_ts
+    elapsed = time.time() - _last_search_ts
+    wait = cfg.PROSPEO_SEARCH_MIN_INTERVAL - elapsed
+    if wait > 0:
+        time.sleep(wait)
+    _last_search_ts = time.time()
+
+
+def _is_rate_limit(resp):
+    if resp.status_code == 429:
+        return True
+    try:
+        return "rate limit" in resp.json().get("error_code", "").lower()
+    except Exception:
+        return False
 
 
 def _clean_domain(raw):
@@ -45,12 +69,24 @@ def _search_people(company_domain=None, company_name=None, titles=None):
     if titles:
         filters["person_job_title"] = {"include": titles}
 
-    resp = requests.post(
-        f"{cfg.PROSPEO_BASE}/search-person",
-        headers={"X-KEY": PROSPEO_KEY, "Content-Type": "application/json"},
-        json={"page": 1, "filters": filters},
-    )
-    if not resp.ok:
+    for attempt in range(cfg.PROSPEO_RATE_LIMIT_RETRIES + 1):
+        _throttle_search()
+        resp = requests.post(
+            f"{cfg.PROSPEO_BASE}/search-person",
+            headers={"X-KEY": PROSPEO_KEY, "Content-Type": "application/json"},
+            json={"page": 1, "filters": filters},
+        )
+        if resp.ok:
+            return resp.json().get("results", [])
+
+        # Rate limited — back off and retry within this call (the limit is
+        # per-second/per-minute, so a short wait clears it).
+        if _is_rate_limit(resp) and attempt < cfg.PROSPEO_RATE_LIMIT_RETRIES:
+            print(f"[email_finder] Prospeo rate limit — waiting {cfg.PROSPEO_RATE_LIMIT_BACKOFF}s "
+                  f"(attempt {attempt + 1}/{cfg.PROSPEO_RATE_LIMIT_RETRIES})")
+            time.sleep(cfg.PROSPEO_RATE_LIMIT_BACKOFF)
+            continue
+
         try:
             err_code = resp.json().get("error_code", "")
         except Exception:
@@ -61,10 +97,8 @@ def _search_people(company_domain=None, company_name=None, titles=None):
             if err_code == "INVALID_FILTERS":
                 print(f"[email_finder] Prospeo rejected filter: {resp.text}")
             return []
-        # Rate limits and other errors propagate so the caller's retry can kick in.
+        # Other errors propagate so the caller's retry can kick in.
         raise RuntimeError(f"Prospeo search failed {resp.status_code}: {resp.text}")
-
-    return resp.json().get("results", [])
 
 
 def _search_company(company_name, domain, titles):

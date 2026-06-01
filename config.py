@@ -17,6 +17,7 @@ BASE_DIR = Path(__file__).parent
 
 RESUME_PATH = BASE_DIR / "resume.tex"
 PROJECTS_PATH = BASE_DIR / "projects.md"
+SKILLS_PATH = BASE_DIR / "skills.md"
 RESUMES_OUTPUT_DIR = BASE_DIR / "data" / "resumes"
 RAW_JOBS_PATH = str(BASE_DIR / "data" / "raw_jobs.json")
 TOKEN_PATH = BASE_DIR / "token.json"
@@ -100,6 +101,14 @@ BROADEN_SEARCH_WHEN_NO_HR = True
 # these are dropped before we spend an enrich credit.
 EMAIL_UNAVAILABLE_STATUSES = {"UNAVAILABLE"}
 
+# --- Prospeo rate limiting ---
+# The search endpoint allows 1 req/sec and 5 req/min on the current plan, and a
+# single job can fire 2-3 searches. Enforce a minimum gap between search calls
+# to stay under 1/sec, and back off when the API reports a rate limit.
+PROSPEO_SEARCH_MIN_INTERVAL = 1.3   # seconds between consecutive search calls
+PROSPEO_RATE_LIMIT_BACKOFF = 15     # seconds to wait after a "rate limit" error
+PROSPEO_RATE_LIMIT_RETRIES = 3      # extra attempts on a rate-limit response
+
 # ---------------------------------------------------------------------------
 # Candidate identity (used in outreach messages)
 # ---------------------------------------------------------------------------
@@ -107,6 +116,17 @@ EMAIL_UNAVAILABLE_STATUSES = {"UNAVAILABLE"}
 CANDIDATE_NAME = "Parth Joshi"
 CANDIDATE_EMAIL = "paarthjoshi20@gmail.com"
 CANDIDATE_LINKEDIN = "https://www.linkedin.com/in/parth-joshi-6459a2235/"
+
+# ---------------------------------------------------------------------------
+# Auto-email (send applications automatically, no action-sheet button click)
+# ---------------------------------------------------------------------------
+
+# When True, the pipeline sends each application email itself (Gmail API) and
+# writes the action-sheet row already marked "Emailed". When False, rows are
+# written as "Pending" and you send via the action sheet's Send Email checkbox.
+AUTO_EMAIL = False
+# Filename the attached resume PDF is sent as.
+RESUME_ATTACHMENT_NAME = f"{CANDIDATE_NAME} Resume.pdf"
 
 # ---------------------------------------------------------------------------
 # Google Sheets tab names

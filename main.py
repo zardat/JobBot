@@ -4,7 +4,7 @@ import json
 import time
 import logging
 import argparse
-from datetime import date
+from datetime import date, datetime
 
 import config as cfg
 from modules.scraper import scrape_jobs
@@ -14,6 +14,7 @@ from modules.email_finder import find_contact
 from modules.resume_builder import build_resume
 from modules.message_writer import write_messages
 from modules.sheets import append_action_row
+from modules.emailer import send_application_email
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -76,9 +77,11 @@ def run(args):
         "scraped": 0,
         "new": 0,
         "scored_low": 0,
+        "company_duplicate": 0,
         "qualified": 0,
         "no_contact": 0,
         "processed": 0,
+        "emailed": 0,
         "failed": 0,
     }
 
@@ -103,8 +106,7 @@ def run(args):
     stats["new"] = len(new_jobs)
 
     if args.limit:
-        new_jobs = new_jobs[: args.limit]
-        log.info(f"[main] Capped to {args.limit} jobs via --limit")
+        log.info(f"[main] --limit {args.limit}: will stop after {args.limit} jobs are added to the action sheet")
 
     if not new_jobs:
         log.info("[main] No new jobs to process. Exiting.")
@@ -113,9 +115,28 @@ def run(args):
     # Step 3-8 — Score and fully process each job in a single pass
     log.info(f"[main] Processing {len(new_jobs)} jobs one at a time...")
 
+    # Companies already emailed/processed this run — used to avoid sending
+    # multiple mails to the same person when a company posts several similar jobs.
+    processed_companies = set()
+
     for job in new_jobs:
+        # --limit caps successful jobs (rows added to the action sheet), not
+        # jobs scanned — keep scoring/skipping until that many succeed.
+        if args.limit and stats["processed"] >= args.limit:
+            log.info(f"[main] Reached --limit ({args.limit}) jobs added to sheet — stopping")
+            break
+
         label = f"{job.get('company')} — {job.get('title')}"
         log.info(f"\n[main] ── {label}")
+
+        # One application per company per run — if we already processed another
+        # posting from this company, skip this one (mark seen, no second email).
+        company_key = (job.get("company") or "").strip().lower()
+        if company_key and company_key in processed_companies:
+            log.info(f"[main] Already applied to {job.get('company')} this run — skipping duplicate")
+            mark_jobs_seen([job], status="company_duplicate")
+            stats["company_duplicate"] += 1
+            continue
 
         # Step 3 — Score
         try:
@@ -170,13 +191,25 @@ def run(args):
             log.info(f"[main] Step 6 — Writing messages...")
             job = with_retry(write_messages, job, label=f"write_messages({label})")
 
-            # Step 7 — Append to action sheet
-            log.info(f"[main] Step 7 — Writing to action sheet...")
-            with_retry(append_action_row, job, label=f"append_action_row({label})")
+            # Step 7 — Send email automatically (optional), then append the row
+            if cfg.AUTO_EMAIL:
+                log.info(f"[main] Step 7 — Auto-emailing {job.get('contact_email')}...")
+                with_retry(send_application_email, job, label=f"send_email({label})")
+                applied_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                with_retry(
+                    lambda j: append_action_row(j, status="Emailed", date_applied=applied_at),
+                    job, label=f"append_action_row({label})",
+                )
+                stats["emailed"] += 1
+            else:
+                log.info(f"[main] Step 7 — Writing to action sheet...")
+                with_retry(append_action_row, job, label=f"append_action_row({label})")
 
             # Step 8 — Mark seen
             mark_jobs_seen([job], status="processed")
             stats["processed"] += 1
+            if company_key:
+                processed_companies.add(company_key)
             log.info(f"[main] Done: {label}")
 
         except Exception as e:
@@ -194,9 +227,11 @@ def _print_summary(stats):
     log.info(f"  Scraped:      {stats['scraped']}")
     log.info(f"  New:          {stats['new']}")
     log.info(f"  Scored low:   {stats['scored_low']}")
+    log.info(f"  Co. dup:      {stats['company_duplicate']}")
     log.info(f"  Qualified:    {stats['qualified']}")
     log.info(f"  No contact:   {stats['no_contact']}")
     log.info(f"  Processed:    {stats['processed']}")
+    log.info(f"  Emailed:      {stats['emailed']}")
     log.info(f"  Failed:       {stats['failed']}")
     log.info("=" * 50)
 

@@ -19,3 +19,31 @@ Description: Fully offline LLM inference system with OpenAI-compatible API using
 Tech: llama.cpp, GGUF Quantization, SillyTavern, LLM Inference, OpenAI-compatible API, Context Management
 
 ---
+
+# Work Experience
+
+## Data Scientist — Amenify, Gurgaon (Oct 2025 – Present)
+Description: Architected Maddie AI, a production multi-agent conversational AI using LangGraph and LangChain for automated home service workflows, serving 10K+ monthly bookings with deterministic state-driven dialogue management. Developed agentic AI systems with tool-use integration and autonomous reasoning pipelines for production-grade home service automation at scale.
+Tech: LangGraph, LangChain, Multi-Agent Systems, Agentic AI, Tool-Use Integration, Conversational AI, Python
+
+---
+
+## Software Developer — Samarth Egov, Ministry of Education, New Delhi (Aug 2024 – Mar 2025)
+Description: Developed the Samarth E-Gov Suite using Yii and Bootstrap, enabling 200+ universities to streamline administration. Optimized workflows, reducing system response time by 30% and improving operational efficiency for over 900,000 students and faculty.
+Tech: Yii, Bootstrap, PHP, Web Development, Performance Optimization
+
+---
+
+## Data Analyst Intern — Axestrack Software Solutions, Jaipur (Feb 2023 – July 2023)
+Description: Cross-validated transition from scheduler-based to push-based data processing using Kafka, reducing data ingestion latency for real-time logistics tracking. Improved automated OCR pipeline for document categorization and routing, processing 10,000+ files with enhanced accuracy. Revamped ETL pipeline architecture to optimize logistics data handling, achieving 30% increase in data retrieval speed.
+Tech: Kafka, ETL Pipelines, OCR, Real-time Processing, Data Engineering, Python
+
+---
+
+# Research
+
+## Predicting Magnetization of Transition Metal-Based Materials Using CGCNN (Sep 2025)
+Published in Journal of Magnetism and Magnetic Materials (Elsevier). Developed Crystal Graph Convolutional Neural Networks to predict magnetization in transition metal compounds, reducing reliance on computationally expensive DFT calculations.
+Tech: CGCNN, Graph Neural Networks, PyTorch, Materials Science, Deep Learning
+
+---
